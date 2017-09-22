@@ -75,7 +75,7 @@ module.exports = function room(seq, dataTypes) {
       },
     },
     hooks: {
-      afterCreate: (instance) => {
+      beforeCreate: (instance) => {
         const RoomType = seq.models.RoomType;
         return RoomType.findById(instance.type)
         .then((roomType) => {
