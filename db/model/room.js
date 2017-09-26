@@ -49,6 +49,11 @@ module.exports = function room(seq, dataTypes) {
       defaultValue: false,
       comment: 'Determines if room is still active',
     },
+    bots: {
+      type: dataTypes.ARRAY(dataTypes.STRING),
+      allowNull: true,
+      comment: 'Bots to be used in rooms',
+    },
   }, {
     classMethods: {
       getRoomAssociations() {
@@ -80,6 +85,7 @@ module.exports = function room(seq, dataTypes) {
         return RoomType.findById(instance.type)
         .then((roomType) => {
           instance.settings = roomType.settings;
+          instance.bots = roomType.bots;
           const changedKeys = Object.keys(instance._changed);
           const ignoreAttributes = ['isDeleted'];
           return realTime.publishObject(instance.toJSON(), roomEventNames.add, changedKeys,
