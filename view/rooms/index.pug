@@ -27,10 +27,15 @@ html
           span.slds-assistive-text Loading
           .slds-spinner__dot-a
           .slds-spinner__dot-b
-
+  script(src='http://localhost:5000/public/refocus-bdk.js')
   script(src='/static/scripts/jquery-1.11.1.min.js')
   script(src='/static/scripts/moment.min.js')
   script.
     var trackingId = '#{trackingId}';
+    var ROOMID = window.location.pathname.split('rooms/').length > 1 ? parseInt(window.location.pathname.split('rooms/')[1]) : 1;
+    pollingUI('http://localhost:3000/v1/', 'events', null);
+    pollingUI('http://localhost:3000/v1/', 'botActions', { 'isPending' : 'false' });
+    pollingUI('http://localhost:3000/v1/', 'rooms/'+ROOMID+'/bots/'+'3c6d4128-adf2-40f4-a1c4-ea704f7eafae'+'/data', null);
+    pollingUI('http://localhost:3000/v1/', 'rooms/'+ROOMID, null);
   script(src='/static/analytics/app.js')
   script(src='/static/rooms/app.js')
