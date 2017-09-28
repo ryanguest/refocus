@@ -20,6 +20,95 @@ const common = require('../../../../utils/common');
 const logAPI = require('../../../../utils/apiLog').logAPI;
 const publisher = require('../../../../realtime/redisPublisher');
 const realtimeEvents = require('../../../../realtime/constants').events;
+const redisCache = require('../../../../cache/redisCache').client.cache;
+
+/**
+ * @param {Object} o Sequelize instance
+ * @param {Object} puttableFields from API
+ * @param {Object} toPut from request.body
+ * @returns {Promise} the updated instance
+ */
+function updateInstance(o, puttableFields, toPut) {
+  const keys = Object.keys(puttableFields);
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    if (toPut[key] === undefined) {
+      let nullish = null;
+      if (puttableFields[key].type === 'boolean') {
+        nullish = false;
+      } else if (puttableFields[key].enum) {
+        nullish = puttableFields[key].default;
+      }
+
+      o.set(key, nullish);
+
+      // take nullified fields out of changed fields
+      o.changed(key, false);
+    } else {
+
+      /*
+       * value may have changed. set changed to true to
+       * trigger checks in the model
+       */
+      o.changed(key, true);
+      o.set(key, toPut[key]);
+    }
+  }
+
+  return o.save();
+}
+
+/**
+ * Sends the udpated record back in the json response
+ * with status code 200.
+ *
+ * @param {Object} resultObj - For logging
+ * @param {Object} req - The request object
+ * @param {Object} retVal - The updated instance
+ * @param {Object} props - The helpers/nouns module for the given DB model
+ * @param {Object} res - The response object
+ * @returns {Object} JSON succcessful response
+ */
+function handleUpdatePromise(resultObj, req, retVal, props, res) {
+
+  // retVal is read only.
+  const returnObj = retVal.get ? retVal.get() : retVal;
+
+  // order collectors by name
+  if (props.modelName === 'Generator' && retVal.collectors) {
+    sortArrayObjectsByField(returnObj.collectors, 'name');
+  }
+
+  // publish the update event to the redis channel
+  if (props.publishEvents) {
+    publisher.publishSample(
+      returnObj, props.associatedModels.subject, realtimeEvents.sample.upd);
+  }
+
+  // update the cache
+  if (props.cacheEnabled) {
+    const getCacheKey = req.swagger.params.key.value;
+    const findCacheKey = '{"where":{}}';
+    redisCache.del(getCacheKey);
+    redisCache.del(findCacheKey);
+  }
+
+  resultObj.dbTime = new Date() - resultObj.reqStartTime;
+  logAPI(req, resultObj, returnObj);
+
+  return res.status(constants.httpStatus.OK)
+    .json(responsify(returnObj, props, req.method));
+}
+
+/**
+ * Sorts an array in-place.
+ *
+ * @param {Array} arr Array of objects
+ * @param {String} fieldName The field to sort by
+ */
+function sortArrayObjectsByField(arr, fieldName) {
+  arr.sort((a, b) => a[fieldName].localeCompare(b[fieldName]));
+}
 
 /**
  * In-place removal of certain keys from the input object
@@ -754,9 +843,49 @@ function createSample(req, props) {
   });
 }
 
+/**
+ * Prepares the object to be sent back in the response ("cleans" the object,
+ * strips out nulls, adds API links).
+ *
+ * @param {Instance|Array} rec - The record or records to return in the
+ *  response
+ * @param {Object} props - The helpers/nouns module for the given DB model
+ * @param {String} method - The request method, used to help build the API
+ *  links
+ * @returns {Object} the "responsified" cleaned up object to send back in
+ *  the response
+ */
+function responsify(rec, props, method) {
+  const o = cleanAndStripNulls(rec);
+  let key = o.id;
+
+  // if do not return id, use name instead and delete id field
+  if (props.fieldsToExclude && props.fieldsToExclude.indexOf('id') > -1) {
+    key = o.name;
+    delete o.id;
+  }
+
+  o.apiLinks = getApiLinks(key, props, method);
+  if (props.stringify) {
+    props.stringify.forEach((f) => {
+      o[f] = `${o[f]}`;
+    });
+  }
+
+  return o;
+} // responsify
+
 // ----------------------------------------------------------------------------
 
 module.exports = {
+
+  sortArrayObjectsByField,
+
+  updateInstance,
+
+  responsify,
+
+  handleUpdatePromise,
 
   realtimeEvents,
 
@@ -765,38 +894,6 @@ module.exports = {
   logAPI,
 
   buildFieldList,
-
-  /**
-   * Prepares the object to be sent back in the response ("cleans" the object,
-   * strips out nulls, adds API links).
-   *
-   * @param {Instance|Array} rec - The record or records to return in the
-   *  response
-   * @param {Object} props - The helpers/nouns module for the given DB model
-   * @param {String} method - The request method, used to help build the API
-   *  links
-   * @returns {Object} the "responsified" cleaned up object to send back in
-   *  the response
-   */
-  responsify(rec, props, method) {
-    const o = cleanAndStripNulls(rec);
-    let key = o.id;
-
-    // if do not return id, use name instead and delete id field
-    if (props.fieldsToExclude && props.fieldsToExclude.indexOf('id') > -1) {
-      key = o.name;
-      delete o.id;
-    }
-
-    o.apiLinks = getApiLinks(key, props, method);
-    if (props.stringify) {
-      props.stringify.forEach((f) => {
-        o[f] = `${o[f]}`;
-      });
-    }
-
-    return o;
-  }, // responsify
 
   findAssociatedInstances,
 
