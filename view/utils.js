@@ -92,7 +92,7 @@ function getNamespaceString(inst) {
  */
 function removeSpinner(spinnerID) {
   const spinner = document.getElementById(spinnerID);
-  spinner.parentNode.removeChild(spinner);
+  spinner.removeChild(spinner);
 }
 
 /**

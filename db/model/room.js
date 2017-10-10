@@ -52,7 +52,7 @@ module.exports = function room(seq, dataTypes) {
     bots: {
       type: dataTypes.ARRAY(dataTypes.STRING),
       allowNull: true,
-      comment: 'Bots to be used in rooms',
+      comment: 'Bot names to be used in rooms',
     },
   }, {
     classMethods: {
@@ -80,23 +80,41 @@ module.exports = function room(seq, dataTypes) {
       },
     },
     hooks: {
+
+      /**
+       * Ensures room gets default values from roomType
+       *
+       * @param {Instance} instance - The instance being created
+       * @returns {Promise} which resolves to the instance
+       */
       beforeCreate: (instance) => {
         const RoomType = seq.models.RoomType;
         return RoomType.findById(instance.type)
         .then((roomType) => {
           instance.settings = roomType.settings;
           instance.bots = roomType.bots;
-          const changedKeys = Object.keys(instance._changed);
-          const ignoreAttributes = ['isDeleted'];
-          return realTime.publishObject(instance.toJSON(), roomEventNames.add, changedKeys,
-              ignoreAttributes);
         });
+      },
+
+      /**
+       * Publishes room updates to redis.
+       *
+       * @param {Instance} instance - The instance being created
+       * @returns {Promise} which resolves to the instance
+       */
+      afterCreate: (instance) => {
+        const changedKeys = Object.keys(instance._changed);
+        const ignoreAttributes = ['isDeleted'];
+        return realTime.publishObject(instance.toJSON(), roomEventNames.add,
+          changedKeys, ignoreAttributes);
       },
 
       afterUpdate(instance /* , opts */) {
         if (instance.changed('settings')) {
           if (instance.active) {
-            return realTime.publishObject(instance.toJSON(), roomEventNames.upd);
+            return realTime.publishObject(
+              instance.toJSON(), roomEventNames.upd
+            );
           }
         }
 
