@@ -29,7 +29,7 @@ describe('tests/utils/jwtUtil.js >', () => {
       adminUser.name, adminUser.name
   );
 
-  // dummpy callback that returns a promise.
+  // dummy callback that returns a promise.
   const dummyCallback = function dummy () {
     return new Promise((resolve) => {
       resolve(true);
@@ -88,8 +88,8 @@ describe('tests/utils/jwtUtil.js >', () => {
         expect(request.headers.profileName).to.equal('___myProfile');
         expect(request.headers.tokenName).to.equal('___myRefocusUser');
         expect(request.headers.isAdmin).to.equal(false);
-        expect(request.headers.isBot).to.be.not.ok;
-        expect(request.headers.isCollector).to.be.not.ok;
+        expect(request.headers.isBot).to.equal(false);
+        expect(request.headers.isCollector).to.equal(false);
         return done();
       }).catch(done);
     });
@@ -106,8 +106,8 @@ describe('tests/utils/jwtUtil.js >', () => {
         expect(request.headers.userName).to.equal(collectorInst.name);
         expect(request.headers.profileName).to.equal(undefined);
         expect(request.headers.tokenName).to.equal(collectorInst.name);
-        expect(request.headers.isAdmin).to.be.not.ok;
-        expect(request.headers.isBot).to.be.not.ok;
+        expect(request.headers.isAdmin).to.equal(false);
+        expect(request.headers.isBot).to.equal(false);
         expect(request.headers.isCollector).to.equal(true);
         return done();
       }).catch(done);
@@ -126,8 +126,8 @@ describe('tests/utils/jwtUtil.js >', () => {
         expect(request.headers.profileName).to.equal('Admin');
         expect(request.headers.tokenName).to.equal(adminUser.name);
         expect(request.headers.isAdmin).to.equal(true);
-        expect(request.headers.isBot).to.be.not.ok;
-        expect(request.headers.isCollector).to.be.not.ok;
+        expect(request.headers.isBot).to.equal(false);
+        expect(request.headers.isCollector).to.equal(false);
         return done();
       }).catch(done);
     });
@@ -144,8 +144,8 @@ describe('tests/utils/jwtUtil.js >', () => {
         expect(request.headers.profileName).to.equal('___myProfile');
         expect(request.headers.tokenName).to.equal('___myRefocusUser');
         expect(request.headers.isAdmin).to.equal(false);
-        expect(request.headers.isBot).to.be.not.ok;
-        expect(request.headers.isCollector).to.be.not.ok;
+        expect(request.headers.isBot).to.equal(false);
+        expect(request.headers.isCollector).to.equal(false);
         return done();
       }).catch(done);
     });
